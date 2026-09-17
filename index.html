@@ -1,0 +1,988 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>静物デッサン 構図シミュレーター</title>
+    <style>
+        body {
+            margin: 0;
+            overflow: hidden;
+            font-family: sans-serif;
+            user-select: none;
+            background-color: #1a1a1a;
+        }
+        #canvas-container {
+            width: 100vw;
+            height: 100vh;
+        }
+
+        /* --- コントロールパネル --- */
+        #ui-panel {
+            position: absolute;
+            top: 10px;
+            left: 10px;
+            background: rgba(255, 255, 255, 0.92);
+            padding: 15px;
+            border-radius: 8px;
+            box-shadow: 0 4px 10px rgba(0,0,0,0.3);
+            max-height: 85vh;
+            overflow-y: auto;
+            width: 260px;
+            z-index: 10;
+        }
+        h3 {
+            margin: 12px 0 6px 0;
+            font-size: 13px;
+            border-bottom: 2px solid #ccc;
+            padding-bottom: 3px;
+            color: #222;
+        }
+        h3:first-child { margin-top: 0; }
+        .control-group { margin-bottom: 10px; }
+        .control-row {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            margin-bottom: 4px;
+        }
+        label {
+            display: block;
+            font-size: 11px;
+            margin-bottom: 2px;
+            color: #333;
+            font-weight: bold;
+        }
+        .val-display {
+            font-size: 11px;
+            color: #666;
+            font-weight: normal;
+        }
+        input[type="range"] {
+            width: 100%;
+            margin: 2px 0;
+            cursor: pointer;
+        }
+        input[type="color"] {
+            width: 100%;
+            height: 26px;
+            border: 1px solid #ccc;
+            border-radius: 4px;
+            cursor: pointer;
+            background: none;
+        }
+        .btn-group {
+            display: flex;
+            gap: 5px;
+            margin-top: 5px;
+        }
+        button {
+            flex: 1;
+            padding: 6px 0;
+            font-size: 11px;
+            cursor: pointer;
+            border: 1px solid #aaa;
+            background: #fff;
+            border-radius: 4px;
+            transition: all 0.2s;
+        }
+        button.active {
+            background: #333;
+            color: #fff;
+            border-color: #333;
+        }
+
+        /* ヘルプボタン */
+        #btn-help {
+            width: 100%;
+            background: #2563eb;
+            color: #fff;
+            border: none;
+            padding: 8px 0;
+            border-radius: 5px;
+            font-weight: bold;
+            font-size: 12px;
+            cursor: pointer;
+            margin-bottom: 12px;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.2);
+        }
+        #btn-help:hover {
+            background: #1d4ed8;
+        }
+
+        /* --- 常時表示 構図ポイントパネル（左下） --- */
+        #tips-panel {
+            position: absolute;
+            bottom: 15px;
+            left: 15px;
+            background: rgba(20, 24, 33, 0.88);
+            backdrop-filter: blur(4px);
+            color: #f1f5f9;
+            padding: 14px 16px;
+            border-radius: 8px;
+            border-left: 4px solid #3b82f6;
+            box-shadow: 0 4px 14px rgba(0,0,0,0.4);
+            max-width: 320px;
+            z-index: 10;
+            pointer-events: none; /* 下の要素を邪魔しない */
+        }
+        .tips-title {
+            font-size: 12px;
+            font-weight: bold;
+            color: #60a5fa;
+            margin-bottom: 8px;
+            display: flex;
+            align-items: center;
+            gap: 5px;
+        }
+        .tips-list {
+            margin: 0;
+            padding: 0;
+            list-style: none;
+            font-size: 11px;
+            line-height: 1.5;
+            color: #e2e8f0;
+        }
+        .tips-list li {
+            margin-bottom: 6px;
+        }
+        .tips-list li:last-child {
+            margin-bottom: 0;
+        }
+        .tips-num {
+            font-weight: bold;
+            color: #93c5fd;
+            margin-right: 2px;
+        }
+
+        /* --- 2D見取り図マップ --- */
+        #map-container {
+            position: absolute;
+            bottom: 15px;
+            right: 15px;
+            background: rgba(255, 255, 255, 0.95);
+            border: 2px solid #555;
+            border-radius: 8px;
+            padding: 8px;
+            box-shadow: 0 4px 12px rgba(0,0,0,0.4);
+            z-index: 10;
+        }
+        #map-title {
+            font-size: 11px;
+            font-weight: bold;
+            text-align: center;
+            margin-bottom: 4px;
+            color: #333;
+        }
+        #top-map {
+            width: 180px;
+            height: 180px;
+            background: #e8e8e8;
+            border: 1px solid #ccc;
+            cursor: crosshair;
+            display: block;
+        }
+
+        /* --- 構図フレーム --- */
+        #frame-overlay {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100vw;
+            height: 100vh;
+            pointer-events: none;
+            z-index: 5;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+        }
+        
+        .frame-box {
+            box-shadow: 0 0 0 9999px rgba(0, 0, 0, 0.65);
+            border: 2px solid rgba(255, 255, 255, 0.8);
+            position: relative;
+            transition: width 0.3s, height 0.3s;
+        }
+
+        .frame-grid {
+            width: 100%;
+            height: 100%;
+            display: grid;
+            grid-template-columns: 1fr 1fr 1fr;
+            grid-template-rows: 1fr 1fr 1fr;
+        }
+        .frame-grid div {
+            border: 1px dashed rgba(255, 255, 255, 0.25);
+        }
+
+        .frame-portrait { width: 45vh; height: 60vh; }
+        .frame-landscape { width: 75vh; height: 50vh; }
+        .frame-off { display: none; }
+
+        /* --- 操作ヘルプ モーダル --- */
+        #help-modal-overlay {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100vw;
+            height: 100vh;
+            background: rgba(0, 0, 0, 0.6);
+            z-index: 100;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            opacity: 0;
+            pointer-events: none;
+            transition: opacity 0.2s ease;
+        }
+        #help-modal-overlay.active {
+            opacity: 1;
+            pointer-events: auto;
+        }
+        .help-card {
+            background: #ffffff;
+            width: 90%;
+            max-width: 440px;
+            border-radius: 12px;
+            padding: 20px 24px;
+            box-shadow: 0 10px 25px rgba(0,0,0,0.5);
+            color: #333;
+            position: relative;
+        }
+        .help-card h2 {
+            margin-top: 0;
+            font-size: 16px;
+            border-bottom: 2px solid #eee;
+            padding-bottom: 8px;
+            color: #1e293b;
+        }
+        .help-section {
+            margin-bottom: 16px;
+        }
+        .help-section h4 {
+            margin: 0 0 6px 0;
+            font-size: 12px;
+            color: #2563eb;
+        }
+        .help-item {
+            display: flex;
+            align-items: center;
+            font-size: 12px;
+            margin-bottom: 6px;
+            line-height: 1.4;
+        }
+        .help-icon {
+            font-size: 14px;
+            width: 24px;
+            text-align: center;
+            margin-right: 8px;
+            flex-shrink: 0;
+        }
+        .btn-close-modal {
+            margin-top: 10px;
+            width: 100%;
+            padding: 8px 0;
+            background: #334155;
+            color: #fff;
+            border: none;
+            border-radius: 6px;
+            font-weight: bold;
+            cursor: pointer;
+        }
+        .btn-close-modal:hover {
+            background: #1e293b;
+        }
+    </style>
+    <!-- Three.js and OrbitControls -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/controls/OrbitControls.js"></script>
+</head>
+<body>
+
+    <div id="canvas-container"></div>
+
+    <!-- 構図切り取り用フレーム -->
+    <div id="frame-overlay">
+        <div id="view-frame" class="frame-box frame-off">
+            <div class="frame-grid">
+                <div></div><div></div><div></div>
+                <div></div><div></div><div></div>
+                <div></div><div></div><div></div>
+            </div>
+        </div>
+    </div>
+
+    <!-- コントロールパネル -->
+    <div id="ui-panel">
+        <button id="btn-help">❓ 使い方ガイド</button>
+
+        <h3>構図切り取り窓（フレーム）</h3>
+        <div class="btn-group">
+            <button id="btn-frame-off" class="active">なし</button>
+            <button id="btn-frame-portrait">縦長 窓</button>
+            <button id="btn-frame-landscape">横長 窓</button>
+        </div>
+
+        <h3>モチーフ設定 & カラー</h3>
+        
+        <!-- 瓶の個別設定グループ -->
+        <div class="control-group">
+            <div class="control-row">
+                <label>瓶の回転 (ラベル向き)</label>
+                <span class="val-display"><span id="bottle-rot-val">0</span>°</span>
+            </div>
+            <input type="range" id="bottleRotation" min="0" max="360" value="0" step="1">
+        </div>
+        <div class="control-group">
+            <label>瓶の色</label>
+            <input type="color" id="bottleColor" value="#1b4d2e">
+        </div>
+        <div class="control-group">
+            <label>ラベルの色</label>
+            <input type="color" id="labelColor" value="#f8f4e6">
+        </div>
+
+        <hr style="border: 0; border-top: 1px solid #eee; margin: 10px 0;">
+
+        <!-- その他モチーフのカラー設定 -->
+        <div class="control-group">
+            <label>リンゴの色</label>
+            <input type="color" id="appleColor" value="#cc2222">
+        </div>
+        <div class="control-group">
+            <label>布の色 (メイン)</label>
+            <input type="color" id="clothColor1" value="#4a6572">
+        </div>
+        <div class="control-group">
+            <label>布の色 (ストライプ)</label>
+            <input type="color" id="clothColor2" value="#f4f4f2">
+        </div>
+        <div class="control-group">
+            <label>台座の色</label>
+            <input type="color" id="tableColor" value="#d2b48c">
+        </div>
+
+        <h3>ライティング</h3>
+        <div class="control-group">
+            <div class="control-row">
+                <label>光源角度</label>
+                <span class="val-display"><span id="light-angle-val">45</span>°</span>
+            </div>
+            <input type="range" id="lightAngle" min="0" max="360" value="45">
+        </div>
+        <div class="control-group">
+            <div class="control-row">
+                <label>光源高さ</label>
+                <span class="val-display"><span id="light-height-val">45</span>°</span>
+            </div>
+            <input type="range" id="lightHeight" min="10" max="85" value="45">
+        </div>
+        <div class="control-group">
+            <label>光の強さ</label>
+            <input type="range" id="lightIntensity" min="0.2" max="3.0" step="0.1" value="1.5">
+        </div>
+    </div>
+
+    <!-- 常時表示：構図のアドバイス（左下） -->
+    <div id="tips-panel">
+        <div class="tips-title">💡 構図づくりのポイント</div>
+        <ul class="tips-list">
+            <li><span class="tips-num">①</span> <strong>主役の配置（余白と動勢）</strong><br>メインモチーフを中心からわずかに外し、画面に動きと心地よい余白を生む。</li>
+            <li><span class="tips-num">②</span> <strong>奥行きと視線誘導（三角構図）</strong><br>サブモチーフを前後・左右にずらして配し、立体感と視線の流れを作る。</li>
+            <li><span class="tips-num">③</span> <strong>枠による空間の切り取り</strong><br>構図枠を使い、モチーフの見切れや空間の広がり（余白の緊張感）を検証する。</li>
+        </ul>
+    </div>
+
+    <!-- 2D 見取り図 -->
+    <div id="map-container">
+        <div id="map-title">配置の見取り図 (視点追従)</div>
+        <canvas id="top-map" width="180" height="180"></canvas>
+    </div>
+
+    <!-- 使い方ヘルプ モーダル -->
+    <div id="help-modal-overlay">
+        <div class="help-card">
+            <h2>📖 画面の操作方法</h2>
+            
+            <div class="help-section">
+                <h4>【 画面（3Dビュー）の操作 】</h4>
+                <div class="help-item">
+                    <span class="help-icon">🖱️</span>
+                    <div><strong>左ドラッグ</strong> ： 視点の周回（角度変更）</div>
+                </div>
+                <div class="help-item">
+                    <span class="help-icon">🖱️</span>
+                    <div><strong>右ドラッグ</strong> （または2本指ドラッグ）： 視点の平行移動</div>
+                </div>
+                <div class="help-item">
+                    <span class="help-icon">📜</span>
+                    <div><strong>ホイール回転</strong> ： ズームイン / ズームアウト</div>
+                </div>
+            </div>
+
+            <div class="help-section">
+                <h4>【 右下の見取り図（2D）の操作 】</h4>
+                <div class="help-item">
+                    <span class="help-icon">👆</span>
+                    <div><strong>モチーフをドラッグ</strong> ： 位置の移動</div>
+                </div>
+                <div class="help-item">
+                    <span class="help-icon">🔄</span>
+                    <div><strong>瓶を右ドラッグ</strong> （またはShift+ドラッグ）： 瓶の向き（ラベル）を変更</div>
+                </div>
+            </div>
+
+            <button class="btn-close-modal" id="btn-close-help">閉じる</button>
+        </div>
+    </div>
+
+    <script>
+        // --- 1. Three.js 基本セットアップ ---
+        const container = document.getElementById('canvas-container');
+        const scene = new THREE.Scene();
+        scene.background = new THREE.Color(0xf0f0f0);
+
+        const camera = new THREE.PerspectiveCamera(45, window.innerWidth / window.innerHeight, 0.1, 100);
+        camera.position.set(0, 5, 9);
+
+        const renderer = new THREE.WebGLRenderer({ antialias: true });
+        renderer.setSize(window.innerWidth, window.innerHeight);
+        renderer.shadowMap.enabled = true;
+        renderer.shadowMap.type = THREE.PCFSoftShadowMap;
+        container.appendChild(renderer.domElement);
+
+        const controls = new THREE.OrbitControls(camera, renderer.domElement);
+        controls.enableDamping = true;
+        controls.dampingFactor = 0.05;
+        controls.zoomSpeed = 0.5;
+        controls.target.set(0, 1.0, 0);
+
+        // --- 2. ライティング ---
+        const ambientLight = new THREE.AmbientLight(0xffffff, 0.5);
+        scene.add(ambientLight);
+
+        const dirLight = new THREE.DirectionalLight(0xffffff, 1.4);
+        dirLight.castShadow = true;
+        dirLight.shadow.mapSize.width = 2048;
+        dirLight.shadow.mapSize.height = 2048;
+        dirLight.shadow.bias = -0.0001;
+        dirLight.shadow.normalBias = 0.02;
+
+        dirLight.shadow.camera.near = 1;
+        dirLight.shadow.camera.far = 25;
+        dirLight.shadow.camera.left = -5;
+        dirLight.shadow.camera.right = 5;
+        dirLight.shadow.camera.top = 5;
+        dirLight.shadow.camera.bottom = -5;
+
+        scene.add(dirLight);
+
+        // --- 3. 動的テクスチャ生成 ---
+        function createStripeTexture(color1Hex, color2Hex) {
+            const canvas = document.createElement('canvas');
+            canvas.width = 256; canvas.height = 256;
+            const ctx = canvas.getContext('2d');
+
+            ctx.fillStyle = color1Hex;
+            ctx.fillRect(0, 0, 256, 256);
+
+            ctx.fillStyle = color2Hex;
+            const stripeWidth = 32;
+            for (let x = 0; x < 256; x += stripeWidth * 2) {
+                ctx.fillRect(x, 0, stripeWidth, 256);
+            }
+
+            const texture = new THREE.CanvasTexture(canvas);
+            texture.wrapS = THREE.RepeatWrapping;
+            texture.wrapT = THREE.RepeatWrapping;
+            texture.repeat.set(2, 2);
+            return texture;
+        }
+
+        function createLabelTexture(bgColorHex) {
+            const canvas = document.createElement('canvas');
+            canvas.width = 512; canvas.height = 512;
+            const ctx = canvas.getContext('2d');
+
+            ctx.fillStyle = bgColorHex;
+            ctx.fillRect(0, 0, 512, 512);
+
+            ctx.strokeStyle = '#2c221e';
+            ctx.lineWidth = 8;
+            ctx.strokeRect(20, 20, 472, 472);
+            ctx.lineWidth = 3;
+            ctx.strokeRect(32, 32, 448, 448);
+
+            ctx.fillStyle = '#8b263e';
+            ctx.beginPath();
+            ctx.arc(256, 120, 35, 0, Math.PI * 2);
+            ctx.fill();
+
+            ctx.fillStyle = '#2c221e';
+            ctx.textAlign = 'center';
+
+            ctx.font = 'bold italic 42px "Times New Roman", serif';
+            ctx.fillText('CHÂTEAU', 256, 210);
+
+            ctx.font = 'bold 56px "Times New Roman", serif';
+            ctx.fillText('STILL LIFE', 256, 275);
+
+            ctx.font = 'normal 28px "Times New Roman", serif';
+            ctx.fillText('GRAND VIN DE ART', 256, 340);
+
+            ctx.font = 'bold 36px "Times New Roman", serif';
+            ctx.fillText('2026', 256, 420);
+
+            return new THREE.CanvasTexture(canvas);
+        }
+
+        let stripeTexture = createStripeTexture('#4a6572', '#f4f4f2');
+        let labelTexture = createLabelTexture('#f8f4e6');
+
+        // --- 4. マテリアル ---
+        const bottleMaterial = new THREE.MeshStandardMaterial({ color: 0x1b4d2e, roughness: 0.2, metalness: 0.1 });
+        const labelMaterial = new THREE.MeshStandardMaterial({ map: labelTexture, roughness: 0.6, metalness: 0.0 });
+        const appleMaterial = new THREE.MeshStandardMaterial({ color: 0xcc2222, roughness: 0.4, metalness: 0.05 });
+        const clothMaterial = new THREE.MeshStandardMaterial({ map: stripeTexture, roughness: 0.8, side: THREE.DoubleSide });
+        const tableMaterial = new THREE.MeshStandardMaterial({ color: 0xd2b48c, roughness: 0.8 });
+
+        // --- 5. オブジェクト生成 ---
+        const table = new THREE.Mesh(new THREE.BoxGeometry(10, 0.2, 10), tableMaterial);
+        table.position.y = -0.1;
+        table.receiveShadow = true;
+        scene.add(table);
+
+        const clothGroup = new THREE.Group();
+        const clothMesh = new THREE.Mesh(new THREE.PlaneGeometry(3.5, 3.5), clothMaterial);
+        clothMesh.rotation.x = -Math.PI / 2;
+        clothMesh.rotation.z = Math.PI / 8;
+        clothMesh.position.y = 0.005;
+        clothMesh.receiveShadow = true;
+        clothMesh.castShadow = true;
+        clothGroup.add(clothMesh);
+        scene.add(clothGroup);
+
+        // 瓶（本体＋ラベル）
+        const bottleGroup = new THREE.Group();
+        
+        const body = new THREE.Mesh(new THREE.CylinderGeometry(0.7, 0.7, 2.2, 32), bottleMaterial);
+        body.position.y = 1.1; body.castShadow = true; body.receiveShadow = true;
+        bottleGroup.add(body);
+
+        const bottleRadius = 0.7;
+        const labelWidthAngle = Math.PI * 0.45;
+        
+        const labelGeo = new THREE.CylinderGeometry(
+            bottleRadius + 0.003, 
+            bottleRadius + 0.003, 
+            1.0, 
+            32, 1, true, 
+            -labelWidthAngle / 2, 
+            labelWidthAngle
+        );
+        const labelMesh = new THREE.Mesh(labelGeo, labelMaterial);
+        labelMesh.position.y = 1.0;
+        labelMesh.castShadow = true;
+        labelMesh.receiveShadow = true;
+        bottleGroup.add(labelMesh);
+
+        const shoulder = new THREE.Mesh(new THREE.ConeGeometry(0.7, 0.5, 32), bottleMaterial);
+        shoulder.position.y = 2.45; shoulder.castShadow = true; shoulder.receiveShadow = true;
+        bottleGroup.add(shoulder);
+
+        const neck = new THREE.Mesh(new THREE.CylinderGeometry(0.25, 0.25, 0.8, 32), bottleMaterial);
+        neck.position.y = 2.9; neck.castShadow = true; neck.receiveShadow = true;
+        bottleGroup.add(neck);
+
+        scene.add(bottleGroup);
+
+        function createApple() {
+            const group = new THREE.Group();
+            const appleRadius = 0.45;
+            const heightScale = 0.85;
+
+            const geo = new THREE.SphereGeometry(appleRadius, 32, 32);
+            geo.scale(1, heightScale, 1);
+            
+            const mesh = new THREE.Mesh(geo, appleMaterial);
+            mesh.position.y = appleRadius * heightScale; 
+            mesh.castShadow = true; 
+            mesh.receiveShadow = true;
+            group.add(mesh);
+
+            const stem = new THREE.Mesh(new THREE.CylinderGeometry(0.02, 0.02, 0.2, 8), new THREE.MeshStandardMaterial({ color: 0x3d2314 }));
+            stem.position.y = appleRadius * heightScale * 2 + 0.05; 
+            stem.rotation.z = 0.2; 
+            stem.castShadow = true;
+            group.add(stem);
+
+            return group;
+        }
+
+        const apple1 = createApple();
+        const apple2 = createApple();
+        const apple3 = createApple();
+
+        scene.add(apple1);
+        scene.add(apple2);
+        scene.add(apple3);
+
+        // --- モチーフ管理データ構造 ---
+        const objects = [
+            { id: 'cloth', name: '布', mesh: clothGroup, x: 0, z: 0.2, radius: 1.2 },
+            { id: 'bottle', name: '瓶', mesh: bottleGroup, x: 0, z: -0.3, radius: 0.7, rotationY: 0 },
+            { id: 'apple1', name: 'リンゴ1', mesh: apple1, x: -0.9, z: 0.6, radius: 0.45 },
+            { id: 'apple2', name: 'リンゴ2', mesh: apple2, x: 0.7, z: 0.7, radius: 0.45 },
+            { id: 'apple3', name: 'リンゴ3', mesh: apple3, x: 0.1, z: 1.2, radius: 0.45 }
+        ];
+
+        function syncPositions() {
+            objects.forEach(obj => {
+                obj.mesh.position.x = obj.x;
+                obj.mesh.position.z = obj.z;
+                if (obj.id === 'bottle') {
+                    obj.mesh.rotation.y = obj.rotationY;
+                }
+            });
+        }
+        syncPositions();
+
+        // --- 6. カメラのアジマス角（回転角度）の取得 ---
+        function getCameraAzimuthAngle() {
+            return controls.getAzimuthalAngle();
+        }
+
+        // --- 7. 見取り図 (2D Canvas) と操作処理 ---
+        const mapCanvas = document.getElementById('top-map');
+        const mapCtx = mapCanvas.getContext('2d');
+        const mapSize = 180;
+        const worldSize = 8;
+
+        function worldToMap(wx, wz) {
+            const theta = getCameraAzimuthAngle();
+            const cos = Math.cos(theta);
+            const sin = Math.sin(theta);
+
+            const rx = wx * cos - wz * sin;
+            const rz = wx * sin + wz * cos;
+
+            const mx = ((rx + worldSize / 2) / worldSize) * mapSize;
+            const my = ((rz + worldSize / 2) / worldSize) * mapSize;
+            return { x: mx, y: my };
+        }
+
+        function mapToWorld(mx, my) {
+            const rx = (mx / mapSize) * worldSize - (worldSize / 2);
+            const rz = (my / mapSize) * worldSize - (worldSize / 2);
+
+            const theta = getCameraAzimuthAngle();
+            const cos = Math.cos(-theta);
+            const sin = Math.sin(-theta);
+
+            const wx = rx * cos - rz * sin;
+            const wz = rx * sin + rz * cos;
+            return { x: wx, z: wz };
+        }
+
+        function drawObjectOnMap(obj) {
+            const pos = worldToMap(obj.x, obj.z);
+            const r = (obj.radius / worldSize) * mapSize;
+
+            mapCtx.save();
+            mapCtx.translate(pos.x, pos.y);
+
+            if (obj.id === 'cloth') {
+                mapCtx.rotate(getCameraAzimuthAngle() - Math.PI / 8);
+                mapCtx.fillStyle = document.getElementById('clothColor1').value;
+                mapCtx.fillRect(-r, -r, r * 2, r * 2);
+                mapCtx.strokeStyle = '#000';
+                mapCtx.lineWidth = selectedObj === obj ? 2.5 : 1;
+                mapCtx.strokeRect(-r, -r, r * 2, r * 2);
+            } else if (obj.id === 'bottle') {
+                mapCtx.rotate(getCameraAzimuthAngle() - obj.rotationY);
+                mapCtx.fillStyle = document.getElementById('bottleColor').value;
+                mapCtx.beginPath();
+                mapCtx.arc(0, 0, Math.max(r, 6), 0, Math.PI * 2);
+                mapCtx.fill();
+                mapCtx.strokeStyle = '#000';
+                mapCtx.lineWidth = selectedObj === obj ? 2.5 : 1;
+                mapCtx.stroke();
+
+                mapCtx.strokeStyle = '#e74c3c';
+                mapCtx.fillStyle = '#e74c3c';
+                mapCtx.lineWidth = 3;
+                mapCtx.beginPath();
+                mapCtx.moveTo(0, 0);
+                const arrowLen = r + 8;
+                mapCtx.lineTo(0, arrowLen);
+                mapCtx.stroke();
+
+                mapCtx.beginPath();
+                mapCtx.arc(0, arrowLen, 3, 0, Math.PI * 2);
+                mapCtx.fill();
+            } else {
+                mapCtx.fillStyle = document.getElementById('appleColor').value;
+                mapCtx.beginPath();
+                mapCtx.arc(0, 0, Math.max(r, 6), 0, Math.PI * 2);
+                mapCtx.fill();
+                mapCtx.strokeStyle = '#000';
+                mapCtx.lineWidth = selectedObj === obj ? 2.5 : 1;
+                mapCtx.stroke();
+            }
+
+            mapCtx.restore();
+        }
+
+        function drawMap() {
+            mapCtx.clearRect(0, 0, mapSize, mapSize);
+
+            mapCtx.fillStyle = '#f2f2f2';
+            mapCtx.fillRect(0, 0, mapSize, mapSize);
+
+            mapCtx.strokeStyle = '#e0e0e0';
+            mapCtx.lineWidth = 1;
+            for (let i = 0; i <= mapSize; i += mapSize / 8) {
+                mapCtx.beginPath(); mapCtx.moveTo(i, 0); mapCtx.lineTo(i, mapSize); mapCtx.stroke();
+                mapCtx.beginPath(); mapCtx.moveTo(0, i); mapCtx.lineTo(mapSize, i); mapCtx.stroke();
+            }
+
+            const clothObj = objects.find(o => o.id === 'cloth');
+            if (clothObj) drawObjectOnMap(clothObj);
+
+            objects.forEach(obj => {
+                if (obj.id !== 'cloth') drawObjectOnMap(obj);
+            });
+
+            mapCtx.fillStyle = 'rgba(0, 120, 255, 0.7)';
+            mapCtx.beginPath();
+            mapCtx.arc(mapSize / 2, mapSize - 8, 5, 0, Math.PI * 2);
+            mapCtx.fill();
+        }
+
+        let selectedObj = null;
+        let isDragging = false;
+        let isRotating = false;
+
+        mapCanvas.addEventListener('contextmenu', e => e.preventDefault());
+
+        function getMapMousePos(e) {
+            const rect = mapCanvas.getBoundingClientRect();
+            return {
+                x: e.clientX - rect.left,
+                y: e.clientY - rect.top
+            };
+        }
+
+        mapCanvas.addEventListener('mousedown', (e) => {
+            const mPos = getMapMousePos(e);
+            const wPos = mapToWorld(mPos.x, mPos.y);
+
+            selectedObj = null;
+            const sortedForSelect = [
+                ...objects.filter(o => o.id !== 'cloth'),
+                ...objects.filter(o => o.id === 'cloth')
+            ];
+
+            for (let i = 0; i < sortedForSelect.length; i++) {
+                const obj = sortedForSelect[i];
+                const dist = Math.hypot(obj.x - wPos.x, obj.z - wPos.z);
+                if (dist < obj.radius + 0.3) {
+                    selectedObj = obj;
+                    if (e.button === 2 || e.shiftKey) {
+                        isRotating = true;
+                    } else {
+                        isDragging = true;
+                    }
+                    break;
+                }
+            }
+            drawMap();
+        });
+
+        window.addEventListener('mousemove', (e) => {
+            if (!selectedObj) return;
+
+            const rect = mapCanvas.getBoundingClientRect();
+            const mx = Math.max(0, Math.min(mapSize, e.clientX - rect.left));
+            const my = Math.max(0, Math.min(mapSize, e.clientY - rect.top));
+
+            if (isDragging) {
+                const wPos = mapToWorld(mx, my);
+                selectedObj.x = wPos.x;
+                selectedObj.z = wPos.z;
+                syncPositions();
+                drawMap();
+            } else if (isRotating && selectedObj.id === 'bottle') {
+                const bottlePos = worldToMap(selectedObj.x, selectedObj.z);
+                const dx = mx - bottlePos.x;
+                const dy = my - bottlePos.y;
+                
+                let angle = getCameraAzimuthAngle() - Math.atan2(dx, dy);
+                while (angle < 0) angle += Math.PI * 2;
+                while (angle >= Math.PI * 2) angle -= Math.PI * 2;
+
+                selectedObj.rotationY = angle;
+                
+                const deg = Math.round((angle * 180) / Math.PI) % 360;
+                document.getElementById('bottleRotation').value = deg;
+                document.getElementById('bottle-rot-val').textContent = deg;
+
+                syncPositions();
+                drawMap();
+            }
+        });
+
+        window.addEventListener('mouseup', () => {
+            isDragging = false;
+            isRotating = false;
+        });
+
+        drawMap();
+
+        // --- 8. 構図枠（フレーム）切替 ---
+        const viewFrame = document.getElementById('view-frame');
+        const btnOff = document.getElementById('btn-frame-off');
+        const btnPortrait = document.getElementById('btn-frame-portrait');
+        const btnLandscape = document.getElementById('btn-frame-landscape');
+
+        function setFrame(mode) {
+            btnOff.classList.remove('active');
+            btnPortrait.classList.remove('active');
+            btnLandscape.classList.remove('active');
+
+            viewFrame.className = 'frame-box';
+
+            if (mode === 'portrait') {
+                viewFrame.classList.add('frame-portrait');
+                btnPortrait.classList.add('active');
+            } else if (mode === 'landscape') {
+                viewFrame.classList.add('frame-landscape');
+                btnLandscape.classList.add('active');
+            } else {
+                viewFrame.classList.add('frame-off');
+                btnOff.classList.add('active');
+            }
+        }
+
+        btnOff.addEventListener('click', () => setFrame('off'));
+        btnPortrait.addEventListener('click', () => setFrame('portrait'));
+        btnLandscape.addEventListener('click', () => setFrame('landscape'));
+
+        // --- 9. 瓶の回転スライダー制御 ---
+        const bottleRotInput = document.getElementById('bottleRotation');
+        function updateBottleRotationFromUI() {
+            const deg = parseFloat(bottleRotInput.value);
+            document.getElementById('bottle-rot-val').textContent = deg;
+            const rad = (deg * Math.PI) / 180;
+            
+            const bottleObj = objects.find(o => o.id === 'bottle');
+            if (bottleObj) {
+                bottleObj.rotationY = rad;
+                syncPositions();
+                drawMap();
+            }
+        }
+        bottleRotInput.addEventListener('input', updateBottleRotationFromUI);
+
+        // --- 10. ライティング制御 ---
+        const lightAngleInput = document.getElementById('lightAngle');
+        const lightHeightInput = document.getElementById('lightHeight');
+        const lightIntensityInput = document.getElementById('lightIntensity');
+
+        function updateLightPosition() {
+            const angleDeg = parseFloat(lightAngleInput.value);
+            const heightDeg = parseFloat(lightHeightInput.value);
+            const intensity = parseFloat(lightIntensityInput.value);
+
+            document.getElementById('light-angle-val').textContent = angleDeg;
+            document.getElementById('light-height-val').textContent = heightDeg;
+
+            const angleRad = (angleDeg * Math.PI) / 180;
+            const heightRad = (heightDeg * Math.PI) / 180;
+            
+            const distance = 10;
+            const y = distance * Math.sin(heightRad);
+            const r = distance * Math.cos(heightRad);
+            const x = r * Math.sin(angleRad);
+            const z = r * Math.cos(angleRad);
+
+            dirLight.position.set(x, y, z);
+            dirLight.intensity = intensity;
+        }
+
+        lightAngleInput.addEventListener('input', updateLightPosition);
+        lightHeightInput.addEventListener('input', updateLightPosition);
+        lightIntensityInput.addEventListener('input', updateLightPosition);
+        updateLightPosition();
+
+        // --- 11. カラー変更イベント ---
+        function updateClothTexture() {
+            const c1 = document.getElementById('clothColor1').value;
+            const c2 = document.getElementById('clothColor2').value;
+            clothMaterial.map = createStripeTexture(c1, c2);
+            clothMaterial.needsUpdate = true;
+            drawMap();
+        }
+
+        function updateLabelTexture() {
+            const color = document.getElementById('labelColor').value;
+            labelMaterial.map = createLabelTexture(color);
+            labelMaterial.needsUpdate = true;
+        }
+
+        document.getElementById('bottleColor').addEventListener('input', (e) => {
+            bottleMaterial.color.set(e.target.value);
+            drawMap();
+        });
+
+        document.getElementById('labelColor').addEventListener('input', updateLabelTexture);
+
+        document.getElementById('appleColor').addEventListener('input', (e) => {
+            appleMaterial.color.set(e.target.value);
+            drawMap();
+        });
+
+        document.getElementById('clothColor1').addEventListener('input', updateClothTexture);
+        document.getElementById('clothColor2').addEventListener('input', updateClothTexture);
+
+        document.getElementById('tableColor').addEventListener('input', (e) => {
+            tableMaterial.color.set(e.target.value);
+        });
+
+        // --- 12. ヘルプモーダル制御 ---
+        const helpModal = document.getElementById('help-modal-overlay');
+        const btnHelp = document.getElementById('btn-help');
+        const btnCloseHelp = document.getElementById('btn-close-help');
+
+        btnHelp.addEventListener('click', () => {
+            helpModal.classList.add('active');
+        });
+
+        btnCloseHelp.addEventListener('click', () => {
+            helpModal.classList.remove('active');
+        });
+
+        helpModal.addEventListener('click', (e) => {
+            if (e.target === helpModal) {
+                helpModal.classList.remove('active');
+            }
+        });
+
+        // --- 13. ウィンドウリサイズ対応 ---
+        window.addEventListener('resize', () => {
+            camera.aspect = window.innerWidth / window.innerHeight;
+            camera.updateProjectionMatrix();
+            renderer.setSize(window.innerWidth, window.innerHeight);
+        });
+
+        // --- 14. アニメーションループ ---
+        function animate() {
+            requestAnimationFrame(animate);
+            controls.update();
+            drawMap();
+            renderer.render(scene, camera);
+        }
+        animate();
+    </script>
+</body>
+</html>

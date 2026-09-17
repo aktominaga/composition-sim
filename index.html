@@ -92,23 +92,39 @@
             border-color: #333;
         }
 
-        /* ヘルプボタン */
+        /* アクションボタン（ヘルプ＆作例） */
+        .action-btn-container {
+            display: flex;
+            gap: 6px;
+            margin-bottom: 12px;
+        }
         #btn-help {
-            width: 100%;
+            flex: 1;
             background: #2563eb;
             color: #fff;
             border: none;
             padding: 8px 0;
             border-radius: 5px;
             font-weight: bold;
-            font-size: 12px;
+            font-size: 11px;
             cursor: pointer;
-            margin-bottom: 12px;
-            box-shadow: 0 2px 4px rgba(0,0,0,0.2);
+            box-shadow: 0 2px 4px rgba(0,0,0,0.15);
         }
-        #btn-help:hover {
-            background: #1d4ed8;
+        #btn-help:hover { background: #1d4ed8; }
+
+        #btn-example {
+            flex: 1;
+            background: #059669;
+            color: #fff;
+            border: none;
+            padding: 8px 0;
+            border-radius: 5px;
+            font-weight: bold;
+            font-size: 11px;
+            cursor: pointer;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.15);
         }
+        #btn-example:hover { background: #047857; }
 
         /* --- 常時表示 構図ポイントパネル（左下） --- */
         #tips-panel {
@@ -124,7 +140,7 @@
             box-shadow: 0 4px 14px rgba(0,0,0,0.4);
             max-width: 320px;
             z-index: 10;
-            pointer-events: none; /* 下の要素を邪魔しない */
+            pointer-events: none;
         }
         .tips-title {
             font-size: 12px;
@@ -143,17 +159,9 @@
             line-height: 1.5;
             color: #e2e8f0;
         }
-        .tips-list li {
-            margin-bottom: 6px;
-        }
-        .tips-list li:last-child {
-            margin-bottom: 0;
-        }
-        .tips-num {
-            font-weight: bold;
-            color: #93c5fd;
-            margin-right: 2px;
-        }
+        .tips-list li { margin-bottom: 6px; }
+        .tips-list li:last-child { margin-bottom: 0; }
+        .tips-num { font-weight: bold; color: #93c5fd; margin-right: 2px; }
 
         /* --- 2D見取り図マップ --- */
         #map-container {
@@ -219,14 +227,14 @@
         .frame-landscape { width: 75vh; height: 50vh; }
         .frame-off { display: none; }
 
-        /* --- 操作ヘルプ モーダル --- */
-        #help-modal-overlay {
+        /* --- 共通モーダル スタイル --- */
+        .modal-overlay {
             position: fixed;
             top: 0;
             left: 0;
             width: 100vw;
             height: 100vh;
-            background: rgba(0, 0, 0, 0.6);
+            background: rgba(0, 0, 0, 0.65);
             z-index: 100;
             display: flex;
             justify-content: center;
@@ -235,62 +243,108 @@
             pointer-events: none;
             transition: opacity 0.2s ease;
         }
-        #help-modal-overlay.active {
+        .modal-overlay.active {
             opacity: 1;
             pointer-events: auto;
         }
-        .help-card {
+        .modal-card {
             background: #ffffff;
             width: 90%;
-            max-width: 440px;
+            max-width: 480px;
             border-radius: 12px;
             padding: 20px 24px;
             box-shadow: 0 10px 25px rgba(0,0,0,0.5);
             color: #333;
-            position: relative;
+            max-height: 85vh;
+            overflow-y: auto;
         }
-        .help-card h2 {
+        .modal-card h2 {
             margin-top: 0;
             font-size: 16px;
             border-bottom: 2px solid #eee;
             padding-bottom: 8px;
             color: #1e293b;
         }
-        .help-section {
-            margin-bottom: 16px;
-        }
-        .help-section h4 {
-            margin: 0 0 6px 0;
-            font-size: 12px;
-            color: #2563eb;
-        }
-        .help-item {
-            display: flex;
-            align-items: center;
-            font-size: 12px;
-            margin-bottom: 6px;
-            line-height: 1.4;
-        }
-        .help-icon {
-            font-size: 14px;
-            width: 24px;
-            text-align: center;
-            margin-right: 8px;
-            flex-shrink: 0;
-        }
         .btn-close-modal {
-            margin-top: 10px;
+            margin-top: 14px;
             width: 100%;
-            padding: 8px 0;
+            padding: 9px 0;
             background: #334155;
             color: #fff;
             border: none;
             border-radius: 6px;
             font-weight: bold;
+            font-size: 12px;
             cursor: pointer;
         }
-        .btn-close-modal:hover {
-            background: #1e293b;
+        .btn-close-modal:hover { background: #1e293b; }
+
+        /* --- 操作ヘルプ特有 --- */
+        .help-section { margin-bottom: 16px; }
+        .help-section h4 { margin: 0 0 6px 0; font-size: 12px; color: #2563eb; }
+        .help-item { display: flex; align-items: center; font-size: 12px; margin-bottom: 6px; line-height: 1.4; }
+        .help-icon { font-size: 14px; width: 24px; text-align: center; margin-right: 8px; flex-shrink: 0; }
+
+        /* --- 作例モーダル特有 --- */
+        .tab-group {
+            display: flex;
+            gap: 8px;
+            margin-bottom: 14px;
+        }
+        .tab-btn {
+            flex: 1;
+            padding: 8px 0;
+            font-size: 12px;
+            font-weight: bold;
+            border: 1px solid #cbd5e1;
+            background: #f8fafc;
+            color: #64748b;
+            border-radius: 6px;
+            cursor: pointer;
+            transition: all 0.2s;
+        }
+        .tab-btn.active {
+            background: #059669;
+            color: #ffffff;
+            border-color: #059669;
+        }
+
+        .example-panel {
+            display: none;
+            text-align: center;
+        }
+        .example-panel.active {
+            display: block;
+        }
+
+        .example-img-wrapper {
+            background: #f1f5f9;
+            border: 1px solid #e2e8f0;
+            border-radius: 8px;
+            padding: 10px;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            margin-bottom: 10px;
+            min-height: 220px;
+        }
+        .example-img-wrapper img {
+            max-width: 100%;
+            max-height: 280px;
+            border-radius: 4px;
+            box-shadow: 0 2px 8px rgba(0,0,0,0.15);
+            object-fit: contain;
+        }
+
+        .example-desc {
+            font-size: 12px;
+            line-height: 1.6;
+            color: #334155;
+            text-align: left;
+            background: #f8fafc;
+            padding: 10px 12px;
+            border-radius: 6px;
+            border-left: 3px solid #059669;
         }
     </style>
     <!-- Three.js and OrbitControls -->
@@ -314,7 +368,10 @@
 
     <!-- コントロールパネル -->
     <div id="ui-panel">
-        <button id="btn-help">❓ 使い方ガイド</button>
+        <div class="action-btn-container">
+            <button id="btn-help">❓ 使い方</button>
+            <button id="btn-example">🖼️ 構図の作例</button>
+        </div>
 
         <h3>構図切り取り窓（フレーム）</h3>
         <div class="btn-group">
@@ -325,7 +382,6 @@
 
         <h3>モチーフ設定 & カラー</h3>
         
-        <!-- 瓶の個別設定グループ -->
         <div class="control-group">
             <div class="control-row">
                 <label>瓶の回転 (ラベル向き)</label>
@@ -344,7 +400,6 @@
 
         <hr style="border: 0; border-top: 1px solid #eee; margin: 10px 0;">
 
-        <!-- その他モチーフのカラー設定 -->
         <div class="control-group">
             <label>リンゴの色</label>
             <input type="color" id="appleColor" value="#cc2222">
@@ -399,9 +454,9 @@
         <canvas id="top-map" width="180" height="180"></canvas>
     </div>
 
-    <!-- 使い方ヘルプ モーダル -->
-    <div id="help-modal-overlay">
-        <div class="help-card">
+    <!-- モーダル1：使い方ヘルプ -->
+    <div id="help-modal-overlay" class="modal-overlay">
+        <div class="modal-card">
             <h2>📖 画面の操作方法</h2>
             
             <div class="help-section">
@@ -433,6 +488,45 @@
             </div>
 
             <button class="btn-close-modal" id="btn-close-help">閉じる</button>
+        </div>
+    </div>
+
+    <!-- モーダル2：作例ギャラリー -->
+    <div id="example-modal-overlay" class="modal-overlay">
+        <div class="modal-card">
+            <h2>🖼️ 構図の作例と解説</h2>
+
+            <!-- 縦・横 切替タブ -->
+            <div class="tab-group">
+                <button id="tab-portrait" class="tab-btn active">📱 縦構図の作例</button>
+                <button id="tab-landscape" class="tab-btn">💻 横構図の作例</button>
+            </div>
+
+            <!-- 縦構図パネル -->
+            <div id="panel-portrait" class="example-panel active">
+                <div class="example-img-wrapper">
+                    <!-- ※実際の画像を使いたい場合は src="portrait.jpg" のようにファイル名を指定してください -->
+                    <img id="img-portrait" src="portrait.png" alt="縦構図作例">
+                </div>
+                <div class="example-desc">
+                    <strong>【縦構図のポイント】</strong><br>
+                    背の高い瓶（メインモチーフ）の「高さ」と「スリムな印象」を引き立てる構図です。手前に向かう布とリンゴで<b>三角形（立体感）</b>を作り、複数あるもの(サブモチーフ)が一か所にまとまり過ぎないよう配置しています。
+                </div>
+            </div>
+
+            <!-- 横構図パネル -->
+            <div id="panel-landscape" class="example-panel">
+                <div class="example-img-wrapper">
+                    <!-- ※実際の画像を使いたい場合は src="landscape.jpg" のようにファイル名を指定してください -->
+                    <img id="img-landscape" src="landscape.png" alt="横構図作例">
+                </div>
+                <div class="example-desc">
+                    <strong>【横構図のポイント】</strong><br>
+                    台座の空間的な「広がり」と「ゆったりとした安定感」を生かした構図です。背の高い瓶は上部を想像できる位置で切り取り、モチーフ全体を広めに配置することで、<b>視線が自然に手前→左→右へ巡る安定したバランス</b>を作っています。
+                </div>
+            </div>
+
+            <button class="btn-close-modal" id="btn-close-example">閉じる</button>
         </div>
     </div>
 
@@ -562,7 +656,6 @@
         clothGroup.add(clothMesh);
         scene.add(clothGroup);
 
-        // 瓶（本体＋ラベル）
         const bottleGroup = new THREE.Group();
         
         const body = new THREE.Mesh(new THREE.CylinderGeometry(0.7, 0.7, 2.2, 32), bottleMaterial);
@@ -627,7 +720,6 @@
         scene.add(apple2);
         scene.add(apple3);
 
-        // --- モチーフ管理データ構造 ---
         const objects = [
             { id: 'cloth', name: '布', mesh: clothGroup, x: 0, z: 0.2, radius: 1.2 },
             { id: 'bottle', name: '瓶', mesh: bottleGroup, x: 0, z: -0.3, radius: 0.7, rotationY: 0 },
@@ -647,7 +739,6 @@
         }
         syncPositions();
 
-        // --- 6. カメラのアジマス角（回転角度）の取得 ---
         function getCameraAzimuthAngle() {
             return controls.getAzimuthalAngle();
         }
@@ -949,23 +1040,41 @@
             tableMaterial.color.set(e.target.value);
         });
 
-        // --- 12. ヘルプモーダル制御 ---
+        // --- 12. モーダル制御（ヘルプ ＆ 作例） ---
         const helpModal = document.getElementById('help-modal-overlay');
         const btnHelp = document.getElementById('btn-help');
         const btnCloseHelp = document.getElementById('btn-close-help');
 
-        btnHelp.addEventListener('click', () => {
-            helpModal.classList.add('active');
+        btnHelp.addEventListener('click', () => helpModal.classList.add('active'));
+        btnCloseHelp.addEventListener('click', () => helpModal.classList.remove('active'));
+        helpModal.addEventListener('click', (e) => { if (e.target === helpModal) helpModal.classList.remove('active'); });
+
+        const exampleModal = document.getElementById('example-modal-overlay');
+        const btnExample = document.getElementById('btn-example');
+        const btnCloseExample = document.getElementById('btn-close-example');
+
+        btnExample.addEventListener('click', () => exampleModal.classList.add('active'));
+        btnCloseExample.addEventListener('click', () => exampleModal.classList.remove('active'));
+        exampleModal.addEventListener('click', (e) => { if (e.target === exampleModal) exampleModal.classList.remove('active'); });
+
+        // 作例タブ切替
+        const tabPortrait = document.getElementById('tab-portrait');
+        const tabLandscape = document.getElementById('tab-landscape');
+        const panelPortrait = document.getElementById('panel-portrait');
+        const panelLandscape = document.getElementById('panel-landscape');
+
+        tabPortrait.addEventListener('click', () => {
+            tabPortrait.classList.add('active');
+            tabLandscape.classList.remove('active');
+            panelPortrait.classList.add('active');
+            panelLandscape.classList.remove('active');
         });
 
-        btnCloseHelp.addEventListener('click', () => {
-            helpModal.classList.remove('active');
-        });
-
-        helpModal.addEventListener('click', (e) => {
-            if (e.target === helpModal) {
-                helpModal.classList.remove('active');
-            }
+        tabLandscape.addEventListener('click', () => {
+            tabLandscape.classList.add('active');
+            tabPortrait.classList.remove('active');
+            panelLandscape.classList.add('active');
+            panelPortrait.classList.remove('active');
         });
 
         // --- 13. ウィンドウリサイズ対応 ---
